@@ -67,6 +67,12 @@ Aşağıdaki testler, örnek metro ağı üzerinde çalıştırılmıştır:
    - **En Hızlı Rota (16 dakika)**: Keçiören -> Gar -> Sihhiye -> Kızılay -> AŞTİ
 
 ---
+### Metro Ağı Görselleştirme
+Metro ağının grafiksel bir şekilde görselleştirilmiş hali aşağıda gösterilmiştir:
+
+![Metro Ağı Haritası](images/Figure_1.png)
+
+Bu harita, metro ağındaki istasyonları ve hatları göstermektedir. Kırmızı, mavi ve turuncu hatlar farklı renklerle belirtilmiştir. Yeşil kesikli çizgi, AŞTİ'den OSB'ye en hızlı rotayı temsil eder.
 
 ## Projeyi Geliştirme Fikirleri
 
