@@ -110,13 +110,49 @@ class MetroAgi:
                     heapq.heappush(pq, (yeni_maliyet, id(komsu_istasyon), komsu_istasyon, yeni_yol))
         return None
     
+    def en_kisa_mesafe_bul(self, baslangic_id: str, hedef_id: str) -> Optional[Tuple[List[Istasyon], int]]:
+        """En az istasyon geçişiyle rota bulan fonksiyon."""
+        if baslangic_id not in self.istasyonlar or hedef_id not in self.istasyonlar:
+            return None
+        baslangic = self.istasyonlar[baslangic_id]
+        hedef = self.istasyonlar[hedef_id]
+        kuyruk = deque([(baslangic, [baslangic], 0)])  # (istasyon, yol, istasyon sayısı)
+        ziyaret_edildi = {baslangic: 0}  # istasyon -> ziyaret sayısı
+        while kuyruk:
+            mevcut_istasyon, yol, istasyon_sayisi = kuyruk.popleft()
+            if mevcut_istasyon == hedef:
+                return yol, istasyon_sayisi
+            for komsu_istasyon, _, _ in mevcut_istasyon.komsular:
+                if komsu_istasyon not in ziyaret_edildi or istasyon_sayisi + 1 < ziyaret_edildi[komsu_istasyon]:
+                    ziyaret_edildi[komsu_istasyon] = istasyon_sayisi + 1
+                    yeni_yol = yol + [komsu_istasyon]
+                    kuyruk.append((komsu_istasyon, yeni_yol, istasyon_sayisi + 1))
+        return None
+
+    def istasyon_ara(self, kelime: str) -> List[Istasyon]:
+        """İstasyon adında verilen kelimeyi içeren istasyonları döndürür."""
+        return [istasyon for istasyon in self.istasyonlar.values() if kelime.lower() in istasyon.ad.lower()]
+    
+    def istatistikler(self) -> Dict:
+        """Metro ağının temel istatistiklerini döndürür."""
+        toplam_istasyon = len(self.istasyonlar)
+        toplam_hat = len(self.hatlar)
+        toplam_baglanti = sum(len(istasyon.komsular) for istasyon in self.istasyonlar.values()) // 2
+        aktarma_noktalari = sum(1 for istasyon in self.istasyonlar.values() if any(k[2] for k in istasyon.komsular))
+        return {
+            "Toplam İstasyon": toplam_istasyon,
+            "Toplam Hat": toplam_hat,
+            "Toplam Bağlantı": toplam_baglanti,
+            "Aktarma Noktası": aktarma_noktalari
+        }
+    
     def metro_agi_gorsellestir(self, vurgulanacak_rota: Optional[List[Istasyon]] = None):
         G = nx.Graph()
         for istasyon_id, istasyon in self.istasyonlar.items():
             G.add_node(istasyon.ad, hat=istasyon.hat)
             for komsu, sure, _ in istasyon.komsular:
                 G.add_edge(istasyon.ad, komsu.ad, weight=sure, hat=istasyon.hat)
-        pos = nx.spring_layout(G, k=1.5, iterations=150)  # Daha iyi düzenleme için k artırıldı
+        pos = nx.spring_layout(G, k=1.5, iterations=150)
         renkler = {"Kırmızı Hat": "red", "Mavi Hat": "blue", "Turuncu Hat": "orange"}
         for hat, istasyonlar in self.hatlar.items():
             nx.draw_networkx_nodes(G, pos, nodelist=[i.ad for i in istasyonlar],
@@ -133,7 +169,7 @@ class MetroAgi:
         plt.legend(scatterpoints=1, loc="best", fontsize=10)
         plt.axis("off")
         plt.tight_layout()
-        plt.savefig('metro_agi.png')  # Görselleştirmeyi dosyaya kaydet
+        plt.savefig('metro_agi.png')
         plt.close()
     
     def kullanici_arayuzu(self):
@@ -142,13 +178,16 @@ class MetroAgi:
             print("1. En az aktarmalı rota bul")
             print("2. En hızlı rota bul")
             print("3. Belirli hatlarla en hızlı rota bul")
-            print("4. Metro ağını görselleştir")
-            print("5. Çıkış")
-            secim = input("Seçiminizi yapın (1-5): ")
-            if secim == "5":
+            print("4. En kısa mesafe rota bul")
+            print("5. İstasyon ara")
+            print("6. Ağ istatistikleri")
+            print("7. Metro ağını görselleştir")
+            print("8. Çıkış")
+            secim = input("Seçiminizi yapın (1-8): ")
+            if secim == "8":
                 print("Çıkılıyor...")
                 break
-            if secim in ["1", "2", "3"]:
+            if secim in ["1", "2", "3", "4"]:
                 print("\nMevcut istasyonlar:")
                 for idx, istasyon in sorted(self.istasyonlar.items()):
                     print(f"{idx}: {istasyon.ad} ({istasyon.hat})")
@@ -180,7 +219,29 @@ class MetroAgi:
                         self.metro_agi_gorsellestir(vurgulanacak_rota=rota)
                     else:
                         print("Rota bulunamadı.")
-            elif secim == "4":
+                elif secim == "4":
+                    sonuc = self.en_kisa_mesafe_bul(baslangic_id, hedef_id)
+                    if sonuc:
+                        rota, istasyon_sayisi = sonuc
+                        print(f"En kısa mesafe rota ({istasyon_sayisi} istasyon):", " -> ".join(i.ad for i in rota))
+                        self.metro_agi_gorsellestir(vurgulanacak_rota=rota)
+                    else:
+                        print("Rota bulunamadı.")
+            elif secim == "5":
+                kelime = input("Aranacak kelimeyi girin: ")
+                bulunanlar = self.istasyon_ara(kelime)
+                if bulunanlar:
+                    print("\nBulunan istasyonlar:")
+                    for istasyon in bulunanlar:
+                        print(f"{istasyon.idx}: {istasyon.ad} ({istasyon.hat})")
+                else:
+                    print("Eşleşen istasyon bulunamadı.")
+            elif secim == "6":
+                istatistikler = self.istatistikler()
+                print("\nMetro Ağı İstatistikleri:")
+                for anahtar, deger in istatistikler.items():
+                    print(f"{anahtar}: {deger}")
+            elif secim == "7":
                 self.metro_agi_gorsellestir()
                 print("Metro ağı görselleştirildi, 'metro_agi.png' dosyasına kaydedildi.")
             else:
